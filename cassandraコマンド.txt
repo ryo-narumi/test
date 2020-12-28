@@ -1,0 +1,36 @@
+C:\apache\cassandra-3.11.9\bin\cqlsh.py localhost -u cassandra -p cassandra
+
+■参考URL：https://docs.datastax.com/ja/dse/5.1/cql/index.html
+
+
+■キースペース作成
+CREATE KEYSPACE IF NOT EXISTS sakumatest WITH REPLICATION = {'class' : 'SimpleStrategy', 'replication_factor' : 1 };
+
+■キースペース一覧
+DESCRIBE KEYSPACES
+
+■キースペース詳細
+DESCRIBE KEYSPACE sakumatest
+
+
+■テーブル作成
+CREATE TABLE sakumatest.feed (    id text,    timestamp    timestamp,    message text,    primary key((id), timestamp)) WITH CLUSTERING ORDER BY (timestamp DESC);
+
+
+■インサート
+cqlsh> INSERT INTO sakumatest.feed(id, timestamp, message) VALUES ('1', '2020-12-21 16:00:000', '{deviceId:d001, eventId:e001,eventTime:2020-12-21 16:00:000,columnValue:123 }');
+cqlsh> INSERT INTO sakumatest.feed(id, timestamp, message) VALUES ('2', '2020-12-21 16:01:000', '{deviceId:d002, eventId:e001,eventTime:2020-12-21 16:01:000,columnValue:abc }');
+cqlsh> INSERT INTO sakumatest.feed(id, timestamp, message) VALUES ('3', '2020-12-21 16:02:000', '{deviceId:d003, eventId:e001,eventTime:2020-12-21 16:02:000,columnValue:45d }');
+cqlsh> INSERT INTO sakumatest.feed(id, timestamp, message) VALUES ('4', '2020-12-21 16:00:000', '{deviceId:d004, eventId:e001,eventTime:2020-12-21 16:00:000,columnValue:XYZ }');
+cqlsh> INSERT INTO sakumatest.feed(id, timestamp, message) VALUES ('5', '2020-12-21 16:01:000', '{deviceId:d001, eventId:e002,eventTime:2020-12-21 16:01:000,columnValue:0123456789}');
+cqlsh> INSERT INTO sakumatest.feed(id, timestamp, message) VALUES ('6', '2020-12-21 16:02:000', '{deviceId:d002, eventId:e002,eventTime:2020-12-21 16:02:000,columnValue:null}');
+
+
+--佐久間のコマンドプロンプトから全角をインサートできなかった
+cqlsh> INSERT INTO sakumatest.feed(id, timestamp, message) VALUES ('7', '2020-12-21 16:01:000', '{deviceId:d003, eventId:e002,eventTime:2020-12-21 16:01:000,columnValue:あいう}');
+cqlsh> INSERT INTO sakumatest.feed(id, timestamp, message) VALUES ('8', '2020-12-21 16:02:000', '{deviceId:d004, eventId:e002,eventTime:2020-12-21 16:02:000,columnValue:ＤＥＦ}');
+
+
+
+
+
