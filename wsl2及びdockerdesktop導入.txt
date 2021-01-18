@@ -1,0 +1,48 @@
+◆ユーザ作成
+(1)自分アカウント作成(STSドメインアカウントと一緒にしました)
+(2)administrators グループに作成したユーザを追加
+
+
+◆wsl2導入
+https://docs.microsoft.com/ja-jp/windows/wsl/install-win10
+
+(1)バージョン 1903 以降、ビルド 18362 以上であることを確認。それより下の場合は windows updateを実行。
+バージョンは「winver」コマンドで確認が可能。
+
+(2)「Linux 用 Windows サブシステム」と「仮想マシン プラットフォーム」を有効化
+　powershell(管理者権限で実行)を起動し、以下コマンドを実行
+dism.exe /online /enable-feature /featurename:Microsoft-Windows-Subsystem-Linux /all /norestart
+dism.exe /online /enable-feature /featurename:VirtualMachinePlatform /all /norestart
+
+(3)Linux カーネル更新プログラム パッケージを導入
+https://wslstorestorage.blob.core.windows.net/wslblob/wsl_update_x64.msi
+
+(4)wslバージョンを1→2へ変更
+　powershell(管理者権限で実行)を起動し、以下コマンドを実行
+wsl --set-default-version 2
+
+(5)ubuntu を導入
+https://www.microsoft.com/store/apps/9n6svws3rx71
+※MSアカウントを求められるため、社員メールアドレスで作成しました。
+
+(6)ubuntu を起動とubuntuアカウント作成とパッケージ更新
+https://docs.microsoft.com/ja-jp/windows/wsl/user-support
+・「スタートメニュー」→「Ubuntu 20.04 LTS」
+・ubuntu上のアカウント及びパスワード設定(自分はPCと同じアカウント名にしました)
+・「sudo apt update && sudo apt upgrade」を実行してパッケージ更新　（応答を求められるので適宜「Y」を入力して実行）
+
+
+◆docker desktop for windows 導入
+(1)パッケージをダウンロード(以下リンクから「get docker」をクリック
+https://hub.docker.com/editions/community/docker-ce-desktop-windows
+
+(2)ダウンロードが完了したらインストーラーを実行、3つのチェックボックスは有効のまま導入。
+
+(3)kubernetes 有効化
+タスクトレイの docker アイコンを右クリック　
+　→「Dashbord」を選択
+　　→画面上部にあるギアマークの「Settings」を選択
+　　　→「Kubernetes」を選択
+　　　　→「Enable Kubernetes」「Deploy Docker Stacks to Kubernetes by default」「Show system containers (advanced)」にチェックを入れて「Apply & Restart」をクリック
+　　　　　→しばらく待って、画面下にある「Docker」「Kubernetes」が「running」となることを確認。
+　　　　　

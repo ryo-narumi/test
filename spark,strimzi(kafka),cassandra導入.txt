@@ -1,0 +1,213 @@
+◆Java8 導入及びspark 3.0.1 導入
+sudo apt-get install openjdk-8-jdk
+java -version         ★java 8 であることを確認
+mkdir ~/spark
+cd spark
+wget https://ftp.riken.jp/net/apache/spark/spark-3.0.1/spark-3.0.1-bin-hadoop3.2.tgz
+tar -zxvf spark-3.0.1-bin-hadoop3.2.tgz spark-3.0.1-bin-hadoop3.2
+
+
+◆コンテナデプロイ
+
+○手順
+＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝
+(1)manifest.tar ファイルを展開
+\\wsl$\Ubuntu-20.04\home\"ユーザ名"　フォルダあたりへ展開
+
+(2)manifest を適用
+WSL2/ubuntuを起動し、以下コマンドを実行
+$ kubectl apply -f ./manifest/cassandar
+$ kubectl apply -f ./manifest/dashboard
+$ kubectl apply -f ./manifest/strimzi/000_crd-ope -n strimzi-kafka
+$ kubectl apply -f ./manifest/strimzi/100_broker-topic
+
+(3)各プロダクトのコンテナおよび接続用サービスが展開されたことを確認
+$ kubectl get pods -A
+$ kubectl get svc -A | grep -e nodeport -e external
+
+鳴海の端末の表示結果を以下記載しますので同じ行数およびステータスが running であれば問題ないです。
+
+-----------------------------------------------------------------
+ryo-narumi@STSF-A00010:~/manifest/strimzi$ kubectl get pods -A -o wide
+NAMESPACE              NAME                                          READY   STATUS    RESTARTS   AGE    IP             NODE             NOMINATED NODE   READINESS GATES
+cassandra              cassandra-0                                   1/1     Running   0          48m    10.1.0.90      docker-desktop   <none>           <none>
+kube-system            coredns-f9fd979d6-djcr5                       1/1     Running   3          3d1h   10.1.0.78      docker-desktop   <none>           <none>
+kube-system            coredns-f9fd979d6-mlkgr                       1/1     Running   3          3d1h   10.1.0.79      docker-desktop   <none>           <none>
+kube-system            etcd-docker-desktop                           1/1     Running   3          3d1h   192.168.65.3   docker-desktop   <none>           <none>
+kube-system            kube-apiserver-docker-desktop                 1/1     Running   3          3d1h   192.168.65.3   docker-desktop   <none>           <none>
+kube-system            kube-controller-manager-docker-desktop        1/1     Running   3          3d1h   192.168.65.3   docker-desktop   <none>           <none>
+kube-system            kube-proxy-tds8b                              1/1     Running   3          3d1h   192.168.65.3   docker-desktop   <none>           <none>
+kube-system            kube-scheduler-docker-desktop                 1/1     Running   3          3d1h   192.168.65.3   docker-desktop   <none>           <none>
+kube-system            storage-provisioner                           1/1     Running   5          3d1h   10.1.0.80      docker-desktop   <none>           <none>
+kube-system            vpnkit-controller                             1/1     Running   3          3d1h   10.1.0.82      docker-desktop   <none>           <none>
+kubernetes-dashboard   dashboard-metrics-scraper-79c5968bdc-xgpgx    1/1     Running   2          43h    10.1.0.88      docker-desktop   <none>           <none>
+kubernetes-dashboard   kubernetes-dashboard-84f598779d-h55rz         1/1     Running   3          43h    10.1.0.84      docker-desktop   <none>           <none>
+strimzi-kafka          my-cluster-entity-operator-7f797f9d87-pqxqm   3/3     Running   0          32m    10.1.0.95      docker-desktop   <none>           <none>
+strimzi-kafka          my-cluster-kafka-0                            1/1     Running   0          33m    10.1.0.94      docker-desktop   <none>           <none>
+strimzi-kafka          my-cluster-zookeeper-0                        1/1     Running   0          33m    10.1.0.93      docker-desktop   <none>           <none>
+strimzi-kafka          strimzi-cluster-operator-54ff55979f-nnj2g     1/1     Running   0          34m    10.1.0.92      docker-desktop   <none>           <none>
+
+ryo-narumi@STSF-A00010:~/manifest/strimzi$ kubectl get svc -A | grep -e nodeport -e external
+NAMESPACE              NAME                                  TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)                      AGE
+cassandra              cassandra-nodeport                    NodePort    10.96.28.138     <none>        9042:31900/TCP               61m  ★cassandra 接続サービス。127.0.0.1:31900 で接続可能
+kubernetes-dashboard   kubernetes-dashboard-nodeport         NodePort    10.104.87.0      <none>        8443:31800/TCP               43h  ★dashborad 接続サービス。127.0.0.1:31800 で接続可能
+strimzi-kafka          my-cluster-kafka-external-bootstrap   NodePort    10.96.241.35     <none>        9094:32000/TCP               46m  ★kafka 接続サービス。127.0.0.1:32000 で接続可能
+-----------------------------------------------------------------
+＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝
+
+上記手順操作で dashborad / cassandra / kafka のコンテナがデプロイされます。
+接続先は127.0.0.1:port番号で接続可能です。ポート番号は以下のとおりとなります。
+# dashboard は参考までに付けたものです
+
+dashboard：31800
+cassandra：31900
+kafka：32000
+
+別のコンテナ状からアクセスする場合は、「kubectl get svc -A」コマンドで表示される
+「CLUSTER-IP:"PORT(S)"の左側に表示されているport番号」で接続可能です。
+
+・kubernetes dashboard
+　　ノートPCのブラウザから接続。認証なし(skipボタン)で接続可能。
+　　https://localhost:port番号
+
+・cassandar 1ノード構成
+　　cassandar への接続情報は以下の通り。
+　　----------------------------------------
+　　- name: CASSANDRA_CLUSTER_NAME
+      value: "K8Demo"
+    - name: CASSANDRA_DC
+      value: "DC1-K8Demo"
+    - name: CASSANDRA_RACK
+      value: "Rack1-K8Demo"
+    ----------------------------------------
+    
+・strimzi(kafka) 1ノード構成
+　my-topic1、my-topic2 という2つのトピックが作成されるように
+　しております。
+
+
+◆sparkコンテナアプリ作成と実行
+
+sparkのライブラリを含んだベースイメージ(dockerimage)を以下 dockerhub に作成していますので、
+この dockeimageにアプリを追加して、dockerimages化することで、sparkアプリをコンテナ化できます。
+
+◎spark アプリ dockerimage ベースコンテナ
+　ryonarumi/spark:v0.9.0
+
+◎アプリを含めたdockerimage化までの流れ
+
+(1)アプリとdockerファイルを用意
+　-----------------------------------------
+　ryo-narumi@STSF-A00010:~/docker/spark-custom-dockerfile$ pwd
+　/home/ryo-narumi/docker/spark-custom-dockerfile
+　ryo-narumi@STSF-A00010:~/docker/spark-custom-dockerfile$ ls -la
+　total 16
+　drwxr-xr-x 3 ryo-narumi ryo-narumi 4096 Jan 15 13:16 .
+　drwxr-xr-x 3 ryo-narumi ryo-narumi 4096 Jan 15 12:53 ..
+　-rw-r--r-- 1 ryo-narumi ryo-narumi   92 Jan 15 13:22 dockerfile   ★利用するdockerファイル
+　drwxr-xr-x 2 ryo-narumi ryo-narumi 4096 Jan 18 11:14 testdir      ★アプリが入ったディレクトリ
+　
+　ryo-narumi@STSF-A00010:~/docker/spark-custom-dockerfile$ ls -la testdir
+　total 8
+　drwxr-xr-x 2 ryo-narumi ryo-narumi 4096 Jan 18 11:14 .
+　drwxr-xr-x 3 ryo-narumi ryo-narumi 4096 Jan 15 13:16 ..
+　-rw-r--r-- 1 ryo-narumi ryo-narumi    0 Jan 18 11:14 test.jar     ★0byteだけどアプリと仮定
+　
+　
+　ryo-narumi@STSF-A00010:~/docker/spark-custom-dockerfile$ cat dockerfile   ★dockerファイルの中身確認
+　FROM ryonarumi/spark:v0.9.0                                               ★ベースイメージを指定(sparkアプリベースdockerイメージ)
+　
+　COPY testdir testdir                                                      ★dockerイメージ内に testdir ディレクトリをコピー(カレントディレクトリにあるtestdirをdockerイメージ内にコピー。sparkのベースコンテナではカレントディレクトリが /opt/spark/work-dir なので、/opt/spark/work-dir/testdir というパスで作成される)
+　
+　ENTRYPOINT [ "/opt/entrypoint.sh" ]                                       ★ここは固定値
+　-----------------------------------------
+
+(2)dockerイメージ化とdockerhubへアップロード
+　-----------------------------------------
+　ryo-narumi@STSF-A00010:~/docker/spark-custom-dockerfile$ docker build -t ryonarumi/spark:v1.0.0 .   ★「-t」オプションでタグ名(リポジトリ名やアプリ、バージョン名などを指定)。
+　[+] Building 0.5s (7/7) FINISHED
+　 => [internal] load build definition from Dockerfile                                                                                                                                                                      0.1s
+　 => => transferring dockerfile: 37B                                                                                                                                                                                       0.0s
+　 => [internal] load .dockerignore                                                                                                                                                                                         0.0s
+　 => => transferring context: 2B                                                                                                                                                                                           0.0s
+　 => [internal] load metadata for docker.io/ryonarumi/spark:v0.9.0                                                                                                                                                         0.0s
+　 => [internal] load build context                                                                                                                                                                                         0.0s
+　 => => transferring context: 66B                                                                                                                                                                                          0.0s
+　 => CACHED [1/2] FROM docker.io/ryonarumi/spark:v0.9.0                                                                                                                                                                    0.0s
+　 => [2/2] COPY testdir testdir                                                                                                                                                                                            0.1s
+　 => exporting to image                                                                                                                                                                                                    0.1s
+　 => => exporting layers                                                                                                                                                                                                   0.1s
+　 => => writing image sha256:9c191c49457231178806054749639660833d7345c01eedbd0b24c10bd0cd9e63                                                                                                                              0.0s
+　 => => naming to docker.io/ryonarumi/spark:v1.0.0
+　                                                                                                                                                                          0.0s
+　ryo-narumi@STSF-A00010:~/docker/spark-custom-dockerfile$ docker images                                                        ★dockerイメージ 確認コマンド
+　REPOSITORY                           TAG                                              IMAGE ID       CREATED          SIZE
+　ryonarumi/spark                      v1.0.0                                           9c191c494572   11 seconds ago   444MB   ★出来上がった dockerイメージ
+　ryonarumi/spark                      v0.9.0                                           8058b6dd5243   3 days ago       444MB
+　kubernetesui/dashboard               v2.1.0                                           9a07b5b4bfac   5 weeks ago      226MB
+　cassandra                            latest                                           8baadf8d390f   7 weeks ago      405MB
+　cassandra                            4.0                                              5a253d1b913d   7 weeks ago      339MB
+　strimzi/kafka                        0.20.0-kafka-2.6.0                               5d0474f49ce7   2 months ago     605MB
+　strimzi/operator                     0.20.0                                           41b47a1a66b4   2 months ago     480MB
+　kubernetesui/metrics-scraper         v1.0.6                                           48d79e554db6   2 months ago     34.5MB
+　docker/desktop-kubernetes            kubernetes-v1.19.3-cni-v0.8.5-critools-v1.17.0   7f85afe431d8   3 months ago     285MB
+　k8s.gcr.io/kube-proxy                v1.19.3                                          cdef7632a242   3 months ago     118MB
+　k8s.gcr.io/kube-apiserver            v1.19.3                                          a301be0cd44b   3 months ago     119MB
+　k8s.gcr.io/kube-controller-manager   v1.19.3                                          9b60aca1d818   3 months ago     111MB
+　k8s.gcr.io/kube-scheduler            v1.19.3                                          aaefbfa906bd   3 months ago     45.7MB
+　k8s.gcr.io/etcd                      3.4.13-0                                         0369cf4303ff   4 months ago     253MB
+　k8s.gcr.io/coredns                   1.7.0                                            bfe3a36ebd25   7 months ago     45.2MB
+　docker/desktop-storage-provisioner   v1.1                                             e704287ce753   9 months ago     41.8MB
+　docker/desktop-vpnkit-controller     v1.0                                             79da37e5a3aa   10 months ago    36.6MB
+　k8s.gcr.io/pause                     3.2                                              80d28bedfe5d   11 months ago    683kB
+　gcr.io/google-samples/cassandra      v13                                              d4455a1f13b6   2 years ago      235MB
+　
+　ryo-narumi@STSF-A00010:~/docker/spark-custom-dockerfile$ docker push ryonarumi/spark:v1.0.0                                    ★dockerイメージを dockerhubへアップロード
+　The push refers to repository [docker.io/ryonarumi/spark]
+　1c3e5e7a64f2: Pushed
+　33b2fa007f4b: Layer already exists
+　5f70bf18a086: Layer already exists
+　cc17a104222d: Layer already exists
+　a1de779c207c: Layer already exists
+　8a7c7406bd9e: Layer already exists
+　3805d0d4217d: Layer already exists
+　aa6170432cf5: Layer already exists
+　d16374ce6d08: Layer already exists
+　624445678a7d: Layer already exists
+　e10c8e00cc6f: Layer already exists
+　7abb3265e12a: Layer already exists
+　5513cf32130a: Layer already exists
+　1c44f9d6c008: Layer already exists
+　cb42413394c4: Layer already exists
+　v1.0.0: digest: sha256:397014503a627f9b60d118f4d2fb0444c1c37157762290b8c66d1c7a560dc970 size: 3458
+　-----------------------------------------
+
+◎spark コンテナ実行(※以下実行は標準で提供されているサンプルアプリを実行しています)
+
+(1)コンテナアプリ実行
+　-----------------------------------------
+　cd ~/spark/spark-3.0.1-bin-hadoop3.2
+　
+　./bin/spark-submit \ 
+　--master k8s://https://127.0.0.1:6443 \
+　--deploy-mode cluster \
+　--name spark-pi \                                                   ★アプリ名称(任意の名称)
+　--class org.apache.spark.examples.SparkPi \                         ★実行するクラス名(main)
+　--conf spark.executor.instances=1 \
+　--conf spark.kubernetes.container.image=ryonarumi/spark:v1.0.0 \    ★sparkアプリが入っているdockerイメージ
+　local:///opt/spark/examples/jars/spark-examples_2.12-3.0.1.jar      ★アプリが含まれている jar ファイル
+　-----------------------------------------
+
+(2)結果確認
+-----------------------------------------
+ryo-narumi@STSF-A00010:~/spark2/spark-3.0.1-bin-hadoop3.2$ kubectl get pods
+NAME                               READY   STATUS      RESTARTS   AGE
+spark-pi-ef9c9b771362ebaf-driver   0/1     Completed   0          7m11s                                     ★kubectl get pods コマンドで、コンテナ名「spark-pi-ef9c9b771362ebaf-driver」を確認。
+
+ryo-narumi@STSF-A00010:~/spark2/spark-3.0.1-bin-hadoop3.2$ kubectl logs spark-pi-ef9c9b771362ebaf-driver    ★kubectl logs [コンテナ名]でコンテナの標準出力及び標準エラー出力を確認
+～～～～～
+21/01/18 02:46:46 INFO DAGScheduler: Job 0 finished: reduce at SparkPi.scala:38, took 2.641468 s
+Pi is roughly 3.142555712778564                                                                             ★サンプルアプリの出力結果(円周率計算結果)
+21/01/18 02:46:46 INFO SparkUI: Stopped Spark web UI at http://spark-pi-ef9c9b771362ebaf-driver-svc.default.svc:4040
+～～～～～
+-----------------------------------------
